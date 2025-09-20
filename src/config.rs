@@ -45,26 +45,26 @@ fn default_path() -> Result<PathBuf, VarError> {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-struct ConfigToml {
-    capture_backend: Option<CaptureBackend>,
-    emulation_backend: Option<EmulationBackend>,
-    port: Option<u16>,
-    release_bind: Option<Vec<scancode::Linux>>,
-    cert_path: Option<PathBuf>,
-    clients: Option<Vec<TomlClient>>,
-    authorized_fingerprints: Option<HashMap<String, String>>,
-    keybindings: Option<HashMap<u32, String>>,
+pub struct ConfigToml {
+    pub capture_backend: Option<CaptureBackend>,
+    pub emulation_backend: Option<EmulationBackend>,
+    pub port: Option<u16>,
+    pub release_bind: Option<Vec<scancode::Linux>>,
+    pub cert_path: Option<PathBuf>,
+    pub clients: Option<Vec<TomlClient>>,
+    pub authorized_fingerprints: Option<HashMap<String, String>>,
+    pub keybindings: Option<HashMap<u32, String>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
-struct TomlClient {
-    hostname: Option<String>,
-    host_name: Option<String>,
-    ips: Option<Vec<IpAddr>>,
-    port: Option<u16>,
-    position: Option<Position>,
-    activate_on_startup: Option<bool>,
-    enter_hook: Option<String>,
+pub struct TomlClient {
+    pub hostname: Option<String>,
+    pub host_name: Option<String>,
+    pub ips: Option<Vec<IpAddr>>,
+    pub port: Option<u16>,
+    pub position: Option<Position>,
+    pub activate_on_startup: Option<bool>,
+    pub enter_hook: Option<String>,
 }
 
 impl ConfigToml {

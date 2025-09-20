@@ -166,6 +166,9 @@ fn build_ui(app: &Application) {
                     FrontendEvent::IncomingDisconnected(addr) => {
                         window.show_toast(format!("{addr} disconnected").as_str());
                     }
+                    FrontendEvent::ConfigDump(toml) => {
+                        window.handle_config_dump(&toml);
+                    }
                 }
             }
         }

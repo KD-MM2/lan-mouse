@@ -106,19 +106,20 @@
                     <child>
                       <object class="AdwPreferencesGroup">
                         <property name="title" translatable="yes">General</property>
-                        <!--
-                        <child>
-                          <object class="AdwActionRow">
-                            <property name="title" translatable="yes">enable</property>
-                            <child type="suffix">
-                              <object class="GtkSwitch">
-                                <property name="valign">center</property>
-                                <property name="tooltip-text" translatable="yes">enable</property>
+                        <property name="header-suffix">
+                          <object class="GtkButton">
+                            <signal name="clicked" handler="handle_dump_config" swapped="true"/>
+                            <property name="child">
+                              <object class="AdwButtonContent">
+                                <property name="icon-name">document-save-symbolic</property>
+                                <property name="label" translatable="yes">Dump Config</property>
                               </object>
-                            </child>
+                            </property>
+                            <style>
+                              <class name="flat"/>
+                            </style>
                           </object>
-                        </child>
-                        -->
+                        </property>
                         <child>
                           <object class="AdwActionRow">
                             <property name="title">hostname &#38;amp; port</property>

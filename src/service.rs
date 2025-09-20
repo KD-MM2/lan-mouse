@@ -68,6 +68,8 @@ pub struct Service {
     /// map from capture handle to connection info
     incoming_conn_info: HashMap<ClientHandle, Incoming>,
     next_trigger_handle: u64,
+    /// the original config
+    config: Config,
 }
 
 #[derive(Debug)]
@@ -137,6 +139,7 @@ impl Service {
             incoming_conn_info: Default::default(),
             incoming_conns: Default::default(),
             next_trigger_handle: 0,
+            config,
         };
         Ok(service)
     }
@@ -200,6 +203,7 @@ impl Service {
             FrontendRequest::UpdateEnterHook(handle, enter_hook) => {
                 self.update_enter_hook(handle, enter_hook)
             }
+            FrontendRequest::GetConfig => self.dump_config(),
         }
     }
 
@@ -500,6 +504,45 @@ impl Service {
     fn update_enter_hook(&mut self, handle: ClientHandle, enter_hook: Option<String>) {
         self.client_manager.set_enter_hook(handle, enter_hook);
         self.broadcast_client(handle);
+    }
+
+    fn dump_config(&mut self) {
+        use crate::config::{ConfigToml, TomlClient};
+
+        let clients = self.client_manager.get_client_states();
+        let toml_clients: Vec<TomlClient> = clients
+            .into_iter()
+            .map(|(_handle, config, state)| {
+                let hostname = config.hostname.clone();
+                TomlClient {
+                    hostname: config.hostname,
+                    host_name: hostname,
+                    ips: Some(config.fix_ips),
+                    port: Some(config.port),
+                    position: Some(config.pos),
+                    activate_on_startup: Some(state.active),
+                    enter_hook: config.cmd,
+                }
+            })
+            .collect();
+
+        let authorized_fingerprints = self.authorized_keys.read().expect("lock").clone();
+
+        let config_toml = ConfigToml {
+            capture_backend: self.config.capture_backend(),
+            emulation_backend: self.config.emulation_backend(),
+            port: Some(self.port),
+            release_bind: Some(self.config.release_bind()),
+            cert_path: Some(self.config.cert_path().to_path_buf()),
+            clients: if toml_clients.is_empty() { None } else { Some(toml_clients) },
+            authorized_fingerprints: if authorized_fingerprints.is_empty() { None } else { Some(authorized_fingerprints) },
+            keybindings: Some(self.config.keybindings()),
+        };
+
+        match toml::to_string_pretty(&config_toml) {
+            Ok(toml_str) => self.notify_frontend(FrontendEvent::ConfigDump(toml_str)),
+            Err(e) => self.notify_frontend(FrontendEvent::Error(format!("Failed to serialize config: {e}"))),
+        }
     }
 
     fn broadcast_client(&mut self, handle: ClientHandle) {

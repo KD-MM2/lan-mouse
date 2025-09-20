@@ -6,6 +6,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{clone, Object};
 use gtk::{
+    gdk,
     gio,
     glib::{self, closure_local},
     NoSelection,
@@ -496,5 +497,18 @@ impl Window {
             }),
         );
         window.present();
+    }
+
+    pub(super) fn handle_config_dump(&self, toml: &str) {
+        // Copy the TOML config to clipboard
+        let display = gdk::Display::default().unwrap();
+        let clipboard = display.clipboard();
+        clipboard.set_text(toml);
+        self.show_toast("Config copied to clipboard");
+        log::info!("Config dumped to clipboard:\n{}", toml);
+    }
+
+    fn request_dump_config(&self) {
+        self.request(FrontendRequest::GetConfig);
     }
 }

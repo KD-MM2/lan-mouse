@@ -152,6 +152,11 @@ impl Window {
         self.obj().open_fingerprint_dialog(None);
     }
 
+    #[template_callback]
+    fn handle_dump_config(&self, _button: &Button) {
+        self.obj().request_dump_config();
+    }
+
     pub fn set_port(&self, port: u16) {
         self.port.set(port);
         if port == DEFAULT_PORT {
