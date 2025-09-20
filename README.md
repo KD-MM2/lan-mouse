@@ -330,6 +330,13 @@ port = 4242
 [authorized_fingerprints]
 "bc:05:ab:7a:a4:de:88:8c:2f:92:ac:bc:b8:49:b8:24:0d:44:b3:e6:a4:ef:d7:0b:6c:69:6d:77:53:0b:14:80" = "iridium"
 
+# optional keybindings for button events
+# Maps button codes to actions. Currently supported actions: "back", "forward"
+# Example: button 275 (back) -> "back", button 276 (forward) -> "forward"
+[keybindings]
+275 = "back"
+276 = "forward"
+
 # define a client on the right side with host name "iridium"
 [[clients]]
 # position (left | right | top | bottom)
@@ -354,6 +361,40 @@ port = 4242
 ```
 
 Where `left` can be either `left`, `right`, `top` or `bottom`.
+
+### Keybindings
+
+Lan Mouse supports custom keybindings for mouse button events. This allows mapping specific button codes to predefined actions, which is useful for handling special mouse buttons like back/forward that may not be recognized by default on certain platforms.
+
+#### Configuration
+
+Add a `[keybindings]` section to your `config.toml`:
+
+```toml
+[keybindings]
+275 = "back"
+276 = "forward"
+```
+
+- The key is the button code (e.g., 275 for back button, 276 for forward button)
+- The value is the action to perform
+
+#### Supported Actions
+
+- `"back"`: Simulates browser back (Cmd + [ on macOS)
+- `"forward"`: Simulates browser forward (Cmd + ] on macOS)
+
+#### Finding Button Codes
+
+To find the button codes for your mouse buttons, run Lan Mouse with debug logging and look for "invalid button event" messages in the logs. The button code will be shown in these messages.
+
+Example:
+
+```
+[2025-09-20T16:49:50Z WARN  input_emulation::macos] invalid button event: 275,1
+```
+
+In this case, button code 275 can be mapped to an action.
 
 ## Roadmap
 - [x] Graphical frontend (gtk + libadwaita)

@@ -113,11 +113,27 @@ impl MacOSEmulation {
         self.repeat_task = Some(repeat_task);
     }
 
-    async fn cancel_repeat_task(&mut self) {
-        if let Some(task) = self.repeat_task.take() {
-            self.notify_repeat_task.notify_waiters();
-            let _ = task.await;
+    async fn handle_browser_key(&mut self, key_code: CGKeyCode, state: u8) {
+        // For browser back/forward, send Cmd + key
+        let cmd_mod = XMods::Mod4Mask;
+        let mut mods = self.modifier_state.get();
+        if state == 1 {
+            mods.insert(cmd_mod);
         }
+        let event = match CGEvent::new_keyboard_event(self.event_source.clone(), key_code, state != 0) {
+            Ok(e) => e,
+            Err(_) => {
+                log::warn!("unable to create browser key event");
+                return;
+            }
+        };
+        event.set_flags(to_cgevent_flags(mods));
+        event.post(CGEventTapLocation::HID);
+        log::trace!("browser key event: {key_code} {state}");
+        if state == 0 {
+            mods.remove(cmd_mod);
+        }
+        self.modifier_state.set(mods);
     }
 }
 
@@ -374,6 +390,15 @@ impl Emulation for MacOSEmulation {
                     key,
                     state,
                 } => {
+                    // Special handling for back/forward keys
+                    if key == input_event::scancode::Linux::KeyBack as u32 {
+                        self.handle_browser_key(CGKeyCode(33), state).await; // [ key
+                        return Ok(());
+                    } else if key == input_event::scancode::Linux::KeyForward as u32 {
+                        self.handle_browser_key(CGKeyCode(30), state).await; // ] key
+                        return Ok(());
+                    }
+
                     let code = match KeyMap::from_key_mapping(KeyMapping::Evdev(key as u16)) {
                         Ok(k) => k.mac as CGKeyCode,
                         Err(_) => {

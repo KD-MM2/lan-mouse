@@ -3,6 +3,13 @@
 # configure release bind
 release_bind = [ "KeyA", "KeyS", "KeyD", "KeyF" ]
 
+# optional keybindings for button events
+# Maps button codes to actions. Currently supported actions: "back", "forward"
+# Example: button 275 (back) -> "back", button 276 (forward) -> "forward"
+[keybindings]
+275 = "back"
+276 = "forward"
+
 # optional port (defaults to 4242)
 port = 4242
 

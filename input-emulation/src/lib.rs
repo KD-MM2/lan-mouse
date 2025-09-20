@@ -4,9 +4,26 @@ use std::{
     fmt::Display,
 };
 
-use input_event::{Event, KeyboardEvent};
+use input_event::{Event, KeyboardEvent, PointerEvent};
 
 pub use self::error::{EmulationCreationError, EmulationError, InputEmulationError};
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum Action {
+    Back,
+    Forward,
+    // Add more actions as needed
+}
+
+impl Action {
+    pub fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "back" => Some(Action::Back),
+            "forward" => Some(Action::Forward),
+            _ => None,
+        }
+    }
+}
 
 #[cfg(windows)]
 mod windows;
@@ -73,10 +90,11 @@ pub struct InputEmulation {
     emulation: Box<dyn Emulation>,
     handles: HashSet<EmulationHandle>,
     pressed_keys: HashMap<EmulationHandle, HashSet<u32>>,
+    keybindings: HashMap<u32, Action>,
 }
 
 impl InputEmulation {
-    async fn with_backend(backend: Backend) -> Result<InputEmulation, EmulationCreationError> {
+    async fn with_backend(backend: Backend, keybindings: HashMap<u32, Action>) -> Result<InputEmulation, EmulationCreationError> {
         let emulation: Box<dyn Emulation> = match backend {
             #[cfg(all(unix, feature = "wlroots", not(target_os = "macos")))]
             Backend::Wlroots => Box::new(wlroots::WlrootsEmulation::new()?),
@@ -96,12 +114,16 @@ impl InputEmulation {
             emulation,
             handles: HashSet::new(),
             pressed_keys: HashMap::new(),
+            keybindings,
         })
     }
 
-    pub async fn new(backend: Option<Backend>) -> Result<InputEmulation, EmulationCreationError> {
+    pub async fn new(backend: Option<Backend>, keybindings_raw: HashMap<u32, String>) -> Result<InputEmulation, EmulationCreationError> {
+        let keybindings: HashMap<u32, Action> = keybindings_raw.into_iter()
+            .filter_map(|(k, v)| Action::from_str(&v).map(|a| (k, a)))
+            .collect();
         if let Some(backend) = backend {
-            let b = Self::with_backend(backend).await;
+            let b = Self::with_backend(backend, keybindings.clone()).await;
             if b.is_ok() {
                 log::info!("using emulation backend: {backend}");
             }
@@ -123,7 +145,7 @@ impl InputEmulation {
             Backend::MacOs,
             Backend::Dummy,
         ] {
-            match Self::with_backend(backend).await {
+            match Self::with_backend(backend, keybindings.clone()).await {
                 Ok(b) => {
                     log::info!("using emulation backend: {backend}");
                     return Ok(b);
@@ -146,6 +168,16 @@ impl InputEmulation {
                 // prevent double pressed / released keys
                 if self.update_pressed_keys(handle, key, state) {
                     self.emulation.consume(event, handle).await?;
+                }
+                Ok(())
+            }
+            Event::Pointer(PointerEvent::Button { time, button, state }) => {
+                if let Some(action) = self.keybindings.get(&button) {
+                    // Convert action to keyboard event
+                    let keyboard_event = self.action_to_keyboard(action, state, time);
+                    self.emulation.consume(Event::Keyboard(keyboard_event), handle).await?;
+                } else {
+                    self.emulation.consume(Event::Pointer(PointerEvent::Button { time, button, state }), handle).await?;
                 }
                 Ok(())
             }
@@ -224,6 +256,14 @@ impl InputEmulation {
             // currently not pressed => can press
             pressed_keys.insert(key)
         }
+    }
+
+    fn action_to_keyboard(&self, action: &Action, state: u32, time: u32) -> KeyboardEvent {
+        let key = match action {
+            Action::Back => input_event::scancode::Linux::KeyBack as u32,
+            Action::Forward => input_event::scancode::Linux::KeyForward as u32,
+        };
+        KeyboardEvent::Key { time, key, state: state as u8 }
     }
 }
 
