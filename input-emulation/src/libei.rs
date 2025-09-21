@@ -31,6 +31,16 @@ use crate::error::EmulationError;
 
 use super::{error::LibeiEmulationCreationError, Emulation, EmulationHandle};
 
+fn get_event_time(event: &Event) -> Option<u32> {
+    match event {
+        Event::Pointer(PointerEvent::Motion { time, .. }) => Some(*time),
+        Event::Pointer(PointerEvent::Button { time, .. }) => Some(*time),
+        Event::Pointer(PointerEvent::Axis { time, .. }) => Some(*time),
+        Event::Keyboard(KeyboardEvent::Key { time, .. }) => Some(*time),
+        _ => None,
+    }
+}
+
 #[derive(Clone, Default)]
 struct Devices {
     pointer: Arc<RwLock<Option<(ei::Device, ei::Pointer)>>>,
@@ -48,6 +58,7 @@ pub(crate) struct LibeiEmulation<'a> {
     libei_error: Arc<AtomicBool>,
     _remote_desktop: RemoteDesktop<'a>,
     session: Session<'a, RemoteDesktop<'a>>,
+    base_time: Option<u64>,
 }
 
 async fn get_ei_fd<'a>(
@@ -105,6 +116,7 @@ impl LibeiEmulation<'_> {
             libei_error,
             _remote_desktop,
             session,
+            base_time: None,
         })
     }
 }
@@ -122,10 +134,23 @@ impl Emulation for LibeiEmulation<'_> {
         event: Event,
         _handle: EmulationHandle,
     ) -> Result<(), EmulationError> {
-        let now = SystemTime::now()
-            .duration_since(UNIX_EPOCH)
-            .unwrap()
-            .as_micros() as u64;
+        let timestamp = if let Some(time) = get_event_time(&event) {
+            if self.base_time.is_none() {
+                self.base_time = Some(
+                    SystemTime::now()
+                        .duration_since(UNIX_EPOCH)
+                        .unwrap()
+                        .as_micros() as u64
+                        - time as u64 * 1000,
+                );
+            }
+            self.base_time.unwrap() + time as u64 * 1000
+        } else {
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_micros() as u64
+        };
         if self.libei_error.load(Ordering::SeqCst) {
             // don't break sending additional events but signal error
             if let Some(e) = self.error.lock().unwrap().take() {
@@ -138,7 +163,7 @@ impl Emulation for LibeiEmulation<'_> {
                     let pointer_device = self.devices.pointer.read().unwrap();
                     if let Some((d, p)) = pointer_device.as_ref() {
                         p.motion_relative(dx as f32, dy as f32);
-                        d.frame(self.conn.serial(), now);
+                        d.frame(self.conn.serial(), timestamp);
                     }
                 }
                 PointerEvent::Button {
@@ -155,7 +180,7 @@ impl Emulation for LibeiEmulation<'_> {
                                 _ => ButtonState::Press,
                             },
                         );
-                        d.frame(self.conn.serial(), now);
+                        d.frame(self.conn.serial(), timestamp);
                     }
                 }
                 PointerEvent::Axis {
@@ -169,7 +194,7 @@ impl Emulation for LibeiEmulation<'_> {
                             0 => s.scroll(0., value as f32),
                             _ => s.scroll(value as f32, 0.),
                         }
-                        d.frame(self.conn.serial(), now);
+                        d.frame(self.conn.serial(), timestamp);
                     }
                 }
                 PointerEvent::AxisDiscrete120 { axis, value } => {
@@ -179,7 +204,7 @@ impl Emulation for LibeiEmulation<'_> {
                             0 => s.scroll_discrete(0, value),
                             _ => s.scroll_discrete(value, 0),
                         }
-                        d.frame(self.conn.serial(), now);
+                        d.frame(self.conn.serial(), timestamp);
                     }
                 }
             },
@@ -198,7 +223,7 @@ impl Emulation for LibeiEmulation<'_> {
                                 _ => KeyState::Press,
                             },
                         );
-                        d.frame(self.conn.serial(), now);
+                        d.frame(self.conn.serial(), timestamp);
                     }
                 }
                 KeyboardEvent::Modifiers { .. } => {}
