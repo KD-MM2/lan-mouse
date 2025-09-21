@@ -113,6 +113,14 @@ impl MacOSEmulation {
         self.repeat_task = Some(repeat_task);
     }
 
+    async fn cancel_repeat_task(&mut self) {
+        if let Some(task) = self.repeat_task.take() {
+            self.notify_repeat_task.notify_waiters();
+            let _ = task.await;
+        }
+    }
+}
+
     async fn handle_browser_key(&mut self, key_code: CGKeyCode, state: u8) {
         // For browser back/forward, send Cmd + key
         let cmd_mod = XMods::Mod4Mask;
