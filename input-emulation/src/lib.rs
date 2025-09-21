@@ -2,6 +2,7 @@ use async_trait::async_trait;
 use std::{
     collections::{HashMap, HashSet},
     fmt::Display,
+    str::FromStr,
 };
 
 use input_event::{Event, KeyboardEvent, PointerEvent};
@@ -15,12 +16,14 @@ pub enum Action {
     // Add more actions as needed
 }
 
-impl Action {
-    pub fn from_str(s: &str) -> Option<Self> {
+impl std::str::FromStr for Action {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
-            "back" => Some(Action::Back),
-            "forward" => Some(Action::Forward),
-            _ => None,
+            "back" => Ok(Action::Back),
+            "forward" => Ok(Action::Forward),
+            _ => Err(()),
         }
     }
 }
@@ -127,7 +130,7 @@ impl InputEmulation {
     ) -> Result<InputEmulation, EmulationCreationError> {
         let keybindings: HashMap<u32, Action> = keybindings_raw
             .into_iter()
-            .filter_map(|(k, v)| Action::from_str(&v).map(|a| (k, a)))
+            .filter_map(|(k, v)| Action::from_str(&v).ok().map(|a| (k, a)))
             .collect();
         if let Some(backend) = backend {
             let b = Self::with_backend(backend, keybindings.clone()).await;
