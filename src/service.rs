@@ -534,14 +534,24 @@ impl Service {
             port: Some(self.port),
             release_bind: Some(self.config.release_bind()),
             cert_path: Some(self.config.cert_path().to_path_buf()),
-            clients: if toml_clients.is_empty() { None } else { Some(toml_clients) },
-            authorized_fingerprints: if authorized_fingerprints.is_empty() { None } else { Some(authorized_fingerprints) },
+            clients: if toml_clients.is_empty() {
+                None
+            } else {
+                Some(toml_clients)
+            },
+            authorized_fingerprints: if authorized_fingerprints.is_empty() {
+                None
+            } else {
+                Some(authorized_fingerprints)
+            },
             keybindings: Some(self.config.keybindings()),
         };
 
         match toml::to_string_pretty(&config_toml) {
             Ok(toml_str) => self.notify_frontend(FrontendEvent::ConfigDump(toml_str)),
-            Err(e) => self.notify_frontend(FrontendEvent::Error(format!("Failed to serialize config: {e}"))),
+            Err(e) => self.notify_frontend(FrontendEvent::Error(format!(
+                "Failed to serialize config: {e}"
+            ))),
         }
     }
 

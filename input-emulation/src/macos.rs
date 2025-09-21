@@ -127,13 +127,14 @@ impl MacOSEmulation {
         if state == 1 {
             mods.insert(cmd_mod);
         }
-        let event = match CGEvent::new_keyboard_event(self.event_source.clone(), key_code, state != 0) {
-            Ok(e) => e,
-            Err(_) => {
-                log::warn!("unable to create browser key event");
-                return;
-            }
-        };
+        let event =
+            match CGEvent::new_keyboard_event(self.event_source.clone(), key_code, state != 0) {
+                Ok(e) => e,
+                Err(_) => {
+                    log::warn!("unable to create browser key event");
+                    return;
+                }
+            };
         event.set_flags(to_cgevent_flags(mods));
         event.post(CGEventTapLocation::HID);
         log::trace!("browser key event: {key_code} {state}");

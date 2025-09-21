@@ -6,8 +6,7 @@ use adw::prelude::*;
 use adw::subclass::prelude::*;
 use glib::{clone, Object};
 use gtk::{
-    gdk,
-    gio,
+    gdk, gio,
     glib::{self, closure_local},
     NoSelection,
 };

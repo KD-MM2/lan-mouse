@@ -94,7 +94,10 @@ pub struct InputEmulation {
 }
 
 impl InputEmulation {
-    async fn with_backend(backend: Backend, keybindings: HashMap<u32, Action>) -> Result<InputEmulation, EmulationCreationError> {
+    async fn with_backend(
+        backend: Backend,
+        keybindings: HashMap<u32, Action>,
+    ) -> Result<InputEmulation, EmulationCreationError> {
         let emulation: Box<dyn Emulation> = match backend {
             #[cfg(all(unix, feature = "wlroots", not(target_os = "macos")))]
             Backend::Wlroots => Box::new(wlroots::WlrootsEmulation::new()?),
@@ -118,8 +121,12 @@ impl InputEmulation {
         })
     }
 
-    pub async fn new(backend: Option<Backend>, keybindings_raw: HashMap<u32, String>) -> Result<InputEmulation, EmulationCreationError> {
-        let keybindings: HashMap<u32, Action> = keybindings_raw.into_iter()
+    pub async fn new(
+        backend: Option<Backend>,
+        keybindings_raw: HashMap<u32, String>,
+    ) -> Result<InputEmulation, EmulationCreationError> {
+        let keybindings: HashMap<u32, Action> = keybindings_raw
+            .into_iter()
             .filter_map(|(k, v)| Action::from_str(&v).map(|a| (k, a)))
             .collect();
         if let Some(backend) = backend {
@@ -171,13 +178,28 @@ impl InputEmulation {
                 }
                 Ok(())
             }
-            Event::Pointer(PointerEvent::Button { time, button, state }) => {
+            Event::Pointer(PointerEvent::Button {
+                time,
+                button,
+                state,
+            }) => {
                 if let Some(action) = self.keybindings.get(&button) {
                     // Convert action to keyboard event
                     let keyboard_event = self.action_to_keyboard(action, state, time);
-                    self.emulation.consume(Event::Keyboard(keyboard_event), handle).await?;
+                    self.emulation
+                        .consume(Event::Keyboard(keyboard_event), handle)
+                        .await?;
                 } else {
-                    self.emulation.consume(Event::Pointer(PointerEvent::Button { time, button, state }), handle).await?;
+                    self.emulation
+                        .consume(
+                            Event::Pointer(PointerEvent::Button {
+                                time,
+                                button,
+                                state,
+                            }),
+                            handle,
+                        )
+                        .await?;
                 }
                 Ok(())
             }
@@ -263,7 +285,11 @@ impl InputEmulation {
             Action::Back => input_event::scancode::Linux::KeyBack as u32,
             Action::Forward => input_event::scancode::Linux::KeyForward as u32,
         };
-        KeyboardEvent::Key { time, key, state: state as u8 }
+        KeyboardEvent::Key {
+            time,
+            key,
+            state: state as u8,
+        }
     }
 }
 
