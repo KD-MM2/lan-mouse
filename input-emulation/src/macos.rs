@@ -119,7 +119,6 @@ impl MacOSEmulation {
             let _ = task.await;
         }
     }
-}
 
     async fn handle_browser_key(&mut self, key_code: CGKeyCode, state: u8) {
         // For browser back/forward, send Cmd + key
