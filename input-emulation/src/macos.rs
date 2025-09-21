@@ -400,10 +400,10 @@ impl Emulation for MacOSEmulation {
                 } => {
                     // Special handling for back/forward keys
                     if key == input_event::scancode::Linux::KeyBack as u32 {
-                        self.handle_browser_key(CGKeyCode(33), state).await; // [ key
+                        self.handle_browser_key(33, state).await; // [ key
                         return Ok(());
                     } else if key == input_event::scancode::Linux::KeyForward as u32 {
-                        self.handle_browser_key(CGKeyCode(30), state).await; // ] key
+                        self.handle_browser_key(30, state).await; // ] key
                         return Ok(());
                     }
 
