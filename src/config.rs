@@ -53,7 +53,7 @@ pub struct ConfigToml {
     pub cert_path: Option<PathBuf>,
     pub clients: Option<Vec<TomlClient>>,
     pub authorized_fingerprints: Option<HashMap<String, String>>,
-    pub keybindings: Option<HashMap<u32, String>>,
+    pub keybindings: Option<HashMap<String, String>>,
 }
 
 #[derive(Clone, Serialize, Deserialize, Debug, Eq, PartialEq)]
@@ -392,5 +392,14 @@ impl Config {
             .as_ref()
             .and_then(|c| c.keybindings.clone())
             .unwrap_or_default()
+            .into_iter()
+            .filter_map(|(k, v)| match k.parse::<u32>() {
+                Ok(key) => Some((key, v)),
+                Err(_) => {
+                    log::warn!("Invalid keybinding key '{}', expected u32", k);
+                    None
+                }
+            })
+            .collect()
     }
 }

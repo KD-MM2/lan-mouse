@@ -544,7 +544,13 @@ impl Service {
             } else {
                 Some(authorized_fingerprints)
             },
-            keybindings: Some(self.config.keybindings()),
+            keybindings: Some(
+                self.config
+                    .keybindings()
+                    .into_iter()
+                    .map(|(k, v)| (k.to_string(), v))
+                    .collect(),
+            ),
         };
 
         match toml::to_string_pretty(&config_toml) {
