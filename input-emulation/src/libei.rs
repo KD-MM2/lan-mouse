@@ -31,16 +31,6 @@ use crate::error::EmulationError;
 
 use super::{error::LibeiEmulationCreationError, Emulation, EmulationHandle};
 
-fn get_event_time(event: &Event) -> Option<u32> {
-    match event {
-        Event::Pointer(PointerEvent::Motion { time, .. }) => Some(*time),
-        Event::Pointer(PointerEvent::Button { time, .. }) => Some(*time),
-        Event::Pointer(PointerEvent::Axis { time, .. }) => Some(*time),
-        Event::Keyboard(KeyboardEvent::Key { time, .. }) => Some(*time),
-        _ => None,
-    }
-}
-
 #[derive(Clone, Default)]
 struct Devices {
     pointer: Arc<RwLock<Option<(ei::Device, ei::Pointer)>>>,
@@ -58,7 +48,7 @@ pub(crate) struct LibeiEmulation<'a> {
     libei_error: Arc<AtomicBool>,
     _remote_desktop: RemoteDesktop<'a>,
     session: Session<'a, RemoteDesktop<'a>>,
-    base_time: Option<u64>,
+    event_counter: u64,
 }
 
 async fn get_ei_fd<'a>(
@@ -116,7 +106,7 @@ impl LibeiEmulation<'_> {
             libei_error,
             _remote_desktop,
             session,
-            base_time: None,
+            event_counter: 0,
         })
     }
 }
@@ -134,23 +124,12 @@ impl Emulation for LibeiEmulation<'_> {
         event: Event,
         _handle: EmulationHandle,
     ) -> Result<(), EmulationError> {
-        let timestamp = if let Some(time) = get_event_time(&event) {
-            if self.base_time.is_none() {
-                self.base_time = Some(
-                    SystemTime::now()
-                        .duration_since(UNIX_EPOCH)
-                        .unwrap()
-                        .as_micros() as u64
-                        - time as u64 * 1000,
-                );
-            }
-            self.base_time.unwrap() + time as u64 * 1000
-        } else {
-            SystemTime::now()
-                .duration_since(UNIX_EPOCH)
-                .unwrap()
-                .as_micros() as u64
-        };
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_micros() as u64;
+        let timestamp = now + self.event_counter;
+        self.event_counter += 1;
         if self.libei_error.load(Ordering::SeqCst) {
             // don't break sending additional events but signal error
             if let Some(e) = self.error.lock().unwrap().take() {
